@@ -1,0 +1,76 @@
+{
+  "expo": {
+    "name": "Scanner QR",
+    "slug": "qr-scanner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/qr-scanner-icon-v2.png",
+    "scheme": "qrscanner",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/images/qr-scanner-icon-v2.png",
+      "bundleIdentifier": "com.miguelsilva.scannerqr",
+      "buildNumber": "1"
+    },
+    "android": {
+      "package": "com.miguelsilva.scannerqr",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#071A2B",
+        "foregroundImage": "./assets/images/qr-scanner-icon-v2.png"
+      },
+      "predictiveBackGestureEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/qr-scanner-icon-v2.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#071A2B",
+          "image": "./assets/images/qr-scanner-icon-v2.png",
+          "imageWidth": 160
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permita que o $(PRODUCT_NAME) use a câmera para ler QR Codes.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "enforceContrast": false,
+          "hidden": false,
+          "style": "light"
+        }
+      ],
+      "expo-sharing"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "expo-navigation-bar": {
+        "enforceContrast": false,
+        "style": "light",
+        "hidden": false
+      },
+      "eas": {
+        "projectId": "0d056e43-dc65-425e-88bc-9dcb08842b64"
+      }
+    }
+  }
+}
