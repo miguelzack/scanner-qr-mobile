@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Keyboard,
@@ -18,6 +18,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getAppColors } from '../constants/app-colors';
@@ -50,6 +61,9 @@ const securityNames: Record<string, string> = {
   WEP: 'WEP',
   DPP: 'Wi-Fi Easy Connect',
 };
+
+const DRAG_TO_CLOSE_DISTANCE = 110;
+const DRAG_TO_CLOSE_VELOCITY = 0.9;
 
 function formatAmount(amount: number): string {
   return amount.toLocaleString('pt-BR', {
@@ -122,6 +136,7 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
   const [isSaveDialogVisible, setSaveDialogVisible] = useState(false);
   const [fileName, setFileName] = useState('leitura_qrcode');
   const [isSaving, setIsSaving] = useState(false);
+  const [detailsAtTop, setDetailsAtTop] = useState(true);
   const isDark = theme === 'dark';
   const colors = getAppColors(theme);
 
@@ -135,14 +150,56 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
   const content = useMemo(() => (data ? parseQrContent(data) : null), [data]);
   const details = useMemo(() => (content ? buildDetails(content) : []), [content]);
 
-  if (!content) return null;
-
-  const closeResult = () => {
+  const closeResult = useCallback(() => {
     setShowWifiPassword(false);
     setSaveDialogVisible(false);
     setIsSaving(false);
     onClose();
-  };
+  }, [onClose]);
+
+  const dragY = useSharedValue(0);
+  const dragStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: dragY.value }],
+  }));
+  const dragGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(!isSaveDialogVisible && detailsAtTop)
+        .activeOffsetY(10)
+        .runOnJS(false)
+        .onUpdate((event) => {
+          dragY.value = Math.max(event.translationY, 0);
+        })
+        .onEnd((event, success) => {
+          if (!success) {
+            dragY.value = withSpring(0);
+            return;
+          }
+
+          if (
+            event.translationY >= DRAG_TO_CLOSE_DISTANCE ||
+            (event.translationY >= 45 && event.velocityY >= DRAG_TO_CLOSE_VELOCITY * 1000)
+          ) {
+            runOnJS(closeResult)();
+            return;
+          }
+
+          dragY.value = withSpring(0);
+        })
+        .onFinalize((_event, success) => {
+          if (!success) dragY.value = withSpring(0);
+        }),
+    [closeResult, detailsAtTop, dragY, isSaveDialogVisible]
+  );
+
+  useEffect(() => {
+    if (visible) {
+      dragY.value = 0;
+      setDetailsAtTop(true);
+    }
+  }, [dragY, visible]);
+
+  if (!content) return null;
 
   const copyValue = async (value: string, message: string) => {
     try {
@@ -369,39 +426,51 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
         else closeResult();
       }}
     >
-      <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
-        <View
-          style={[
-            styles.container,
-            {
-              backgroundColor,
-              paddingBottom: Math.max(insets.bottom + 28, 44),
-            },
-          ]}
-        >
-          <View style={styles.handle} />
-
-          <View style={styles.header}>
-            <View style={styles.titleGroup}>
-              <View style={styles.headerIcon}>
-                <Ionicons name={headerIcon} size={23} color={colors.primary} />
-              </View>
-              <View style={styles.titleText}>
-                <Text style={[styles.title, { color: textColor }]}>{title}</Text>
-                <Text style={[styles.subtitle, { color: subTextColor }]}>
-                  Tipo reconhecido automaticamente
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Fechar resultado"
-              onPress={closeResult}
-              style={[styles.closeBtn, { backgroundColor: cardColor }]}
+      <GestureHandlerRootView style={styles.gestureRoot}>
+        <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
+          <GestureDetector gesture={dragGesture}>
+            <Animated.View
+              style={[
+                styles.container,
+                {
+                  backgroundColor,
+                  paddingBottom: Math.max(insets.bottom + 28, 44),
+                },
+                dragStyle,
+              ]}
             >
-              <Ionicons name="close" size={22} color={textColor} />
-            </TouchableOpacity>
-          </View>
+              <View
+                accessible
+                accessibilityRole="button"
+                accessibilityLabel="Fechar resultado"
+                accessibilityHint="Arraste para baixo para dispensar."
+                onAccessibilityTap={closeResult}
+                style={styles.handleTouchArea}
+              >
+                <View style={styles.handle} />
+              </View>
+
+              <View style={styles.header}>
+                <View style={styles.titleGroup}>
+                  <View style={styles.headerIcon}>
+                    <Ionicons name={headerIcon} size={23} color={colors.primary} />
+                  </View>
+                  <View style={styles.titleText}>
+                    <Text style={[styles.title, { color: textColor }]}>{title}</Text>
+                    <Text style={[styles.subtitle, { color: subTextColor }]}>
+                      Tipo reconhecido automaticamente
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Fechar resultado"
+                  onPress={closeResult}
+                  style={[styles.closeBtn, { backgroundColor: cardColor }]}
+                >
+                  <Ionicons name="close" size={22} color={textColor} />
+                </TouchableOpacity>
+              </View>
 
           {content.kind === 'pix' && content.crcValid === false && (
             <View style={styles.warning}>
@@ -415,6 +484,11 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
           <ScrollView
             style={styles.scrollArea}
             contentContainerStyle={[styles.details, { backgroundColor: cardColor }]}
+            onScroll={(event) => {
+              const atTop = event.nativeEvent.contentOffset.y <= 0;
+              setDetailsAtTop((current) => (current === atTop ? current : atTop));
+            }}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           >
             {details.map((detail, index) => {
@@ -480,7 +554,8 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
               </TouchableOpacity>
             ))}
           </View>
-        </View>
+          </Animated.View>
+          </GestureDetector>
 
         {isSaveDialogVisible && (
           <View style={styles.saveOverlay}>
@@ -576,7 +651,8 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
             </KeyboardAvoidingView>
           </View>
         )}
-      </View>
+        </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -585,6 +661,9 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  gestureRoot: {
+    flex: 1,
   },
   container: {
     borderTopLeftRadius: 28,
@@ -599,8 +678,13 @@ const styles = StyleSheet.create({
     height: 5,
     borderRadius: 3,
     backgroundColor: '#a1a1aa',
-    marginBottom: 14,
     opacity: 0.55,
+  },
+  handleTouchArea: {
+    minHeight: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   header: {
     flexDirection: 'row',
