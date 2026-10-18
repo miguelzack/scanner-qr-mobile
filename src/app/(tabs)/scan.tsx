@@ -87,7 +87,7 @@ export default function ScanScreen() {
     }, delay);
   };
 
-  const handleBarcodeScanned = async ({ type, data }: BarcodeScanningResult) => {
+  const handleBarcodeScanned = ({ type, data }: BarcodeScanningResult) => {
     if (scanLocked.current) return;
     scanLocked.current = true;
 
@@ -105,15 +105,6 @@ export default function ScanScreen() {
       parseQrContent(normalizedData);
       setScannedData(normalizedData);
       setModalVisible(true);
-
-      try {
-        await addScan(normalizedData);
-      } catch {
-        Alert.alert(
-          'Histórico indisponível',
-          'A leitura foi concluída, mas não foi possível salvá-la no histórico local.'
-        );
-      }
     } catch {
       Alert.alert(
         'Conteúdo não reconhecido',
@@ -135,6 +126,27 @@ export default function ScanScreen() {
   const handleCloseModal = () => {
     setModalVisible(false);
     unlockScanner();
+  };
+
+  const handleConfirmScan = async () => {
+    if (!scannedData) return false;
+
+    try {
+      const saved = await addScan(scannedData);
+      if (!saved) {
+        Alert.alert(
+          'Histórico pausado',
+          'Não é possível salvar esta leitura enquanto o histórico estiver pausado.'
+        );
+      }
+      return saved;
+    } catch {
+      Alert.alert(
+        'Histórico indisponível',
+        'Não foi possível salvar a leitura no histórico local. Tente novamente.'
+      );
+      return false;
+    }
   };
 
   if (!permission) {
@@ -306,7 +318,7 @@ export default function ScanScreen() {
 
       <View
         pointerEvents="none"
-        style={[styles.guide, { bottom: Math.max(insets.bottom + 22, 30) }]}
+        style={[styles.guide, { bottom: Math.max(insets.bottom - 16, 6) }]}
       >
         <View style={styles.guideHeader}>
           <View style={styles.guideIcon}>
@@ -335,7 +347,12 @@ export default function ScanScreen() {
         </View>
       </View>
 
-      <ResultModal visible={isModalVisible} onClose={handleCloseModal} data={scannedData} />
+      <ResultModal
+        visible={isModalVisible}
+        onClose={handleCloseModal}
+        onConfirmScan={handleConfirmScan}
+        data={scannedData}
+      />
     </View>
   );
 }

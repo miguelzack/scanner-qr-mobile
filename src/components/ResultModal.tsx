@@ -3,8 +3,9 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   KeyboardAvoidingView,
@@ -38,6 +39,7 @@ import { parseQrContent, ParsedQrContent } from '../utils/qr-content';
 interface ResultModalProps {
   visible: boolean;
   onClose: () => void;
+  onConfirmScan?: () => Promise<boolean>;
   data: string | null;
 }
 
@@ -129,13 +131,14 @@ function sanitizeFileName(value: string): string {
   return sanitized || 'leitura_qrcode';
 }
 
-export default function ResultModal({ visible, onClose, data }: ResultModalProps) {
+export default function ResultModal({ visible, onClose, onConfirmScan, data }: ResultModalProps) {
   const { theme } = useApp();
   const insets = useSafeAreaInsets();
   const [showWifiPassword, setShowWifiPassword] = useState(false);
   const [isSaveDialogVisible, setSaveDialogVisible] = useState(false);
   const [fileName, setFileName] = useState('leitura_qrcode');
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingScan, setIsConfirmingScan] = useState(false);
   const [detailsAtTop, setDetailsAtTop] = useState(true);
   const isDark = theme === 'dark';
   const colors = getAppColors(theme);
@@ -161,10 +164,28 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
   const dragStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: dragY.value }],
   }));
+
+  const confirmScan = useCallback(async () => {
+    if (!onConfirmScan || isConfirmingScan) return;
+
+    setIsConfirmingScan(true);
+    try {
+      const saved = await onConfirmScan();
+      if (saved) closeResult();
+      else dragY.value = withSpring(0);
+    } catch {
+      dragY.value = withSpring(0);
+      Alert.alert('Não foi possível salvar', 'Tente novamente ou cancele a leitura.');
+    } finally {
+      setIsConfirmingScan(false);
+    }
+  }, [closeResult, dragY, isConfirmingScan, onConfirmScan]);
+
+  const handleSwipeDown = onConfirmScan ? confirmScan : closeResult;
   const dragGesture = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(!isSaveDialogVisible && detailsAtTop)
+        .enabled(!isSaveDialogVisible && !isConfirmingScan && detailsAtTop)
         .activeOffsetY(10)
         .runOnJS(false)
         .onUpdate((event) => {
@@ -180,7 +201,7 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
             event.translationY >= DRAG_TO_CLOSE_DISTANCE ||
             (event.translationY >= 45 && event.velocityY >= DRAG_TO_CLOSE_VELOCITY * 1000)
           ) {
-            runOnJS(closeResult)();
+            runOnJS(handleSwipeDown)();
             return;
           }
 
@@ -189,14 +210,33 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
         .onFinalize((_event, success) => {
           if (!success) dragY.value = withSpring(0);
         }),
-    [closeResult, detailsAtTop, dragY, isSaveDialogVisible]
+    [
+      closeResult,
+      detailsAtTop,
+      dragY,
+      handleSwipeDown,
+      isConfirmingScan,
+      isSaveDialogVisible,
+    ]
   );
+
+  useLayoutEffect(() => {
+    if (visible) {
+      dragY.value = 0;
+    }
+  }, [dragY, visible]);
 
   useEffect(() => {
     if (visible) {
-      dragY.value = 0;
       setDetailsAtTop(true);
+      return;
     }
+
+    const resetDragTimer = setTimeout(() => {
+      dragY.value = 0;
+    }, 350);
+
+    return () => clearTimeout(resetDragTimer);
   }, [dragY, visible]);
 
   if (!content) return null;
@@ -423,7 +463,7 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
       statusBarTranslucent
       onRequestClose={() => {
         if (isSaveDialogVisible) setSaveDialogVisible(false);
-        else closeResult();
+        else if (!isConfirmingScan) closeResult();
       }}
     >
       <GestureHandlerRootView style={styles.gestureRoot}>
@@ -442,9 +482,13 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
               <View
                 accessible
                 accessibilityRole="button"
-                accessibilityLabel="Fechar resultado"
-                accessibilityHint="Arraste para baixo para dispensar."
-                onAccessibilityTap={closeResult}
+                accessibilityLabel={onConfirmScan ? 'Salvar leitura' : 'Fechar resultado'}
+                accessibilityHint={
+                  onConfirmScan
+                    ? 'Arraste para baixo para salvar a leitura.'
+                    : 'Arraste para baixo para dispensar.'
+                }
+                onAccessibilityTap={onConfirmScan ? confirmScan : closeResult}
                 style={styles.handleTouchArea}
               >
                 <View style={styles.handle} />
@@ -464,11 +508,25 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
                 </View>
                 <TouchableOpacity
                   accessibilityRole="button"
-                  accessibilityLabel="Fechar resultado"
-                  onPress={closeResult}
-                  style={[styles.closeBtn, { backgroundColor: cardColor }]}
+                  accessibilityLabel={
+                    onConfirmScan ? 'Salvar leitura no histórico' : 'Fechar resultado'
+                  }
+                  onPress={onConfirmScan ? confirmScan : closeResult}
+                  disabled={isConfirmingScan}
+                  style={[
+                    styles.closeBtn,
+                    { backgroundColor: onConfirmScan ? colors.accentSoft : cardColor },
+                  ]}
                 >
-                  <Ionicons name="close" size={22} color={textColor} />
+                  {isConfirmingScan ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons
+                      name={onConfirmScan ? 'checkmark' : 'close'}
+                      size={22}
+                      color={onConfirmScan ? colors.accent : textColor}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
 
@@ -554,6 +612,20 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
               </TouchableOpacity>
             ))}
           </View>
+          {onConfirmScan && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar leitura sem salvar no histórico"
+              onPress={closeResult}
+              disabled={isSaving || isConfirmingScan}
+              style={[styles.cancelReadingButton, { backgroundColor: colors.dangerSoft }]}
+            >
+              <Ionicons name="close-circle-outline" size={20} color={colors.danger} />
+              <Text style={[styles.cancelReadingText, { color: colors.danger }]}>
+                Cancelar leitura
+              </Text>
+            </TouchableOpacity>
+          )}
           </Animated.View>
           </GestureDetector>
 
@@ -799,6 +871,19 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 11,
     fontWeight: '600',
+  },
+  cancelReadingButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  cancelReadingText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   saveOverlay: {
     position: 'absolute',
