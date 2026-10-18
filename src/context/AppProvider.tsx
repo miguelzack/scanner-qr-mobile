@@ -18,6 +18,7 @@ type AppContextData = {
   completeOnboarding: () => Promise<void>;
   history: ScanItem[];
   addScan: (data: string) => Promise<boolean>;
+  removeScans: (ids: string[]) => Promise<void>;
   clearHistory: () => Promise<void>;
   isLoaded: boolean;
 };
@@ -118,6 +119,13 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     return true;
   }, [history, pauseHistory]);
 
+  const removeScans = useCallback(async (ids: string[]) => {
+    const idsToRemove = new Set(ids);
+    const updatedHistory = history.filter((item) => !idsToRemove.has(item.id));
+    await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updatedHistory));
+    setHistoryState(updatedHistory);
+  }, [history]);
+
   const clearHistory = useCallback(async () => {
     setHistoryState([]);
     await AsyncStorage.removeItem(STORAGE_KEYS.HISTORY);
@@ -133,6 +141,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       completeOnboarding,
       history,
       addScan,
+      removeScans,
       clearHistory,
       isLoaded,
     }),
@@ -144,6 +153,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       history,
       isLoaded,
       pauseHistory,
+      removeScans,
       setPauseHistory,
       setTheme,
       theme,

@@ -35,11 +35,12 @@ function formatScanDate(dateValue: string): string {
 }
 
 export default function HistoryScreen() {
-  const { history, theme, clearHistory, pauseHistory } = useApp();
+  const { history, theme, removeScans, pauseHistory } = useApp();
   const [selectedItem, setSelectedItem] = useState<ScanItem | null>(null);
-  const [isSelectionMode, setSelectionMode] = useState(false);
+  const [selectionIntent, setSelectionIntent] = useState<'export' | 'delete' | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [isExportDialogVisible, setExportDialogVisible] = useState(false);
+  const isSelectionMode = selectionIntent !== null;
   const insets = useSafeAreaInsets();
   const colors = getAppColors(theme);
 
@@ -55,12 +56,12 @@ export default function HistoryScreen() {
 
   const cancelSelection = () => {
     setSelectedIds(new Set());
-    setSelectionMode(false);
+    setSelectionIntent(null);
   };
 
-  const enterSelectionMode = (itemId?: string) => {
+  const enterSelectionMode = (itemId?: string, intent: 'export' | 'delete' = 'export') => {
     setSelectedItem(null);
-    setSelectionMode(true);
+    setSelectionIntent(intent);
     if (itemId) setSelectedIds(new Set([itemId]));
   };
 
@@ -79,22 +80,24 @@ export default function HistoryScreen() {
     );
   };
 
-  const handleClearHistory = () => {
+  const handleDeleteSelected = () => {
+    if (selectedIds.size === 0) return;
+
     Alert.alert(
-      'Limpar histórico?',
-      'Todas as leituras salvas serão apagadas deste aparelho. Esta ação não pode ser desfeita.',
+      'Excluir leituras selecionadas?',
+      `${selectedIds.size} ${selectedIds.size === 1 ? 'leitura será removida' : 'leituras serão removidas'} do histórico.`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Limpar',
+          text: 'Excluir',
           style: 'destructive',
           onPress: async () => {
             try {
-              await clearHistory();
+              await removeScans(Array.from(selectedIds));
               cancelSelection();
             } catch {
               Alert.alert(
-                'Não foi possível limpar',
+                'Não foi possível excluir',
                 'O armazenamento local não respondeu. Tente novamente.'
               );
             }
@@ -214,8 +217,8 @@ export default function HistoryScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
-                      accessibilityLabel="Limpar histórico"
-                      onPress={handleClearHistory}
+                      accessibilityLabel="Selecionar leituras para excluir"
+                      onPress={() => enterSelectionMode(undefined, 'delete')}
                       style={[styles.clearButton, { backgroundColor: colors.dangerSoft }]}
                     >
                       <Ionicons name="trash-outline" size={18} color={colors.danger} />
@@ -281,7 +284,9 @@ export default function HistoryScreen() {
                     {selectedIds.size} {selectedIds.size === 1 ? 'selecionado' : 'selecionados'}
                   </Text>
                   <Text style={[styles.selectionHint, { color: colors.textMuted }]}>
-                    Toque nos itens que deseja incluir
+                    {selectionIntent === 'delete'
+                      ? 'Toque nas leituras que deseja excluir'
+                      : 'Toque nos itens que deseja incluir'}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -335,36 +340,62 @@ export default function HistoryScreen() {
           style={[
             styles.exportBar,
             {
-              backgroundColor: colors.accentSoft,
-              borderColor: colors.accent,
+              backgroundColor: selectionIntent === 'delete' ? colors.dangerSoft : colors.accentSoft,
+              borderColor: selectionIntent === 'delete' ? colors.danger : colors.accent,
               bottom: Math.max(insets.bottom - 16, 6),
             },
           ]}
         >
-          <View style={[styles.exportBarIcon, { backgroundColor: colors.accentSoft }]}>
-            <Ionicons name="document-text-outline" size={22} color={colors.accent} />
+          <View
+            style={[
+              styles.exportBarIcon,
+              { backgroundColor: selectionIntent === 'delete' ? colors.surface : colors.accentSoft },
+            ]}
+          >
+            <Ionicons
+              name={selectionIntent === 'delete' ? 'trash-outline' : 'document-text-outline'}
+              size={22}
+              color={selectionIntent === 'delete' ? colors.danger : colors.accent}
+            />
           </View>
           <View style={styles.exportBarCopy}>
-            <Text style={[styles.exportBarTitle, { color: colors.text }]}>Arquivo único formatado</Text>
+            <Text style={[styles.exportBarTitle, { color: colors.text }]}>
+              {selectionIntent === 'delete' ? 'Excluir leituras' : 'Arquivo único formatado'}
+            </Text>
             <Text style={[styles.exportBarSubtitle, { color: colors.textMuted }]}>
               {selectedIds.size === 0
                 ? 'Selecione ao menos uma leitura'
-                : `${selectedIds.size} ${selectedIds.size === 1 ? 'item será incluído' : 'itens serão incluídos'}`}
+                : selectionIntent === 'delete'
+                  ? `${selectedIds.size} ${selectedIds.size === 1 ? 'leitura selecionada' : 'leituras selecionadas'}`
+                  : `${selectedIds.size} ${selectedIds.size === 1 ? 'item será incluído' : 'itens serão incluídos'}`}
             </Text>
           </View>
           <TouchableOpacity
             accessibilityRole="button"
-            accessibilityLabel="Exportar selecionados em TXT"
+            accessibilityLabel={
+              selectionIntent === 'delete'
+                ? 'Excluir leituras selecionadas'
+                : 'Exportar selecionados em TXT'
+            }
             disabled={selectedIds.size === 0}
-            onPress={() => setExportDialogVisible(true)}
+            onPress={() => {
+              if (selectionIntent === 'delete') handleDeleteSelected();
+              else setExportDialogVisible(true);
+            }}
             style={[
               styles.exportAction,
-              { backgroundColor: colors.primary },
+              { backgroundColor: selectionIntent === 'delete' ? colors.danger : colors.primary },
               selectedIds.size === 0 && styles.exportActionDisabled,
             ]}
           >
-            <Ionicons name="download-outline" size={19} color="#FFFFFF" />
-            <Text style={styles.exportActionText}>Exportar</Text>
+            <Ionicons
+              name={selectionIntent === 'delete' ? 'trash-outline' : 'download-outline'}
+              size={19}
+              color="#FFFFFF"
+            />
+            <Text style={styles.exportActionText}>
+              {selectionIntent === 'delete' ? 'Excluir' : 'Exportar'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
