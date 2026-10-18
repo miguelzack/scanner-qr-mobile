@@ -3,7 +3,6 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -179,10 +178,7 @@ export default function HistoryScreen() {
         contentContainerStyle={[
           styles.listContent,
           {
-            paddingTop:
-              Platform.OS === 'web'
-                ? Math.max(insets.top + 90, 102)
-                : Math.max(insets.top + 18, 30),
+            paddingTop: Math.max(insets.top + 18, 30),
             paddingBottom: isSelectionMode
               ? Math.max(insets.bottom + 150, 174)
               : Math.max(insets.bottom + 30, 42),

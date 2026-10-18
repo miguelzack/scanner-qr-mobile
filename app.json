@@ -3,6 +3,10 @@
     "name": "Scanner QR",
     "slug": "qr-scanner",
     "version": "1.0.0",
+    "platforms": [
+      "android",
+      "ios"
+    ],
     "orientation": "portrait",
     "icon": "./assets/images/qr-scanner-icon-v2.png",
     "scheme": "qrscanner",
@@ -24,10 +28,6 @@
       "permissions": [
         "android.permission.CAMERA"
       ]
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/qr-scanner-icon-v2.png"
     },
     "plugins": [
       "expo-router",

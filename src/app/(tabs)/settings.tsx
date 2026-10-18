@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -84,10 +83,7 @@ export default function SettingsScreen() {
       contentContainerStyle={[
         styles.container,
         {
-          paddingTop:
-            Platform.OS === 'web'
-              ? Math.max(insets.top + 90, 102)
-              : Math.max(insets.top + 18, 30),
+          paddingTop: Math.max(insets.top + 18, 30),
           paddingBottom: Math.max(insets.bottom + 36, 48),
         },
       ]}

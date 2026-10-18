@@ -241,17 +241,6 @@ export default function ResultModal({ visible, onClose, data }: ResultModalProps
         });
         setSaveDialogVisible(false);
         Alert.alert('Arquivo salvo', `${fullName} foi salvo na pasta selecionada.`);
-      } else if (Platform.OS === 'web') {
-        const blob = new Blob([scannedText], { type: 'text/plain;charset=utf-8' });
-        const fileUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = fileUrl;
-        link.download = fullName;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(fileUrl);
-        setSaveDialogVisible(false);
       } else {
         if (!FileSystem.cacheDirectory) throw new Error('Cache indisponível');
 

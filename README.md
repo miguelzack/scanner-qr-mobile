@@ -1,7 +1,7 @@
 # Scanner QR
 
 Aplicativo em React Native, Expo SDK 57 e TypeScript para leitura, interpretação e
-organização de QR Codes. O projeto funciona em Android, iOS e web.
+organização de QR Codes em Android e iOS.
 
 ## Recursos
 
@@ -26,7 +26,7 @@ npx expo start
 ```
 
 Use um aparelho físico para validar a câmera e a integração com os ajustes de Wi-Fi. As
-dependências usam o Expo SDK 57.
+dependências usam o Expo SDK 57. O aplicativo não inclui suporte web.
 
 ## Verificações
 
@@ -34,7 +34,8 @@ dependências usam o Expo SDK 57.
 npx tsc --noEmit
 npm run lint
 npx expo-doctor
-npx expo export --platform all
+npx expo export --platform android
+npx expo export --platform ios
 ```
 
 ## Gerar um APK instalável

@@ -12,7 +12,6 @@ import {
   Animated,
   Easing,
   Linking,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -274,7 +273,7 @@ export default function ScanScreen() {
       <View
         style={[
           styles.topBar,
-          { top: insets.top + (Platform.OS === 'web' ? 76 : 14) },
+          { top: insets.top + 14 },
         ]}
       >
         <View style={styles.brandBadge}>
