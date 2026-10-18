@@ -1,5 +1,4 @@
 import type { ScanItem } from '../context/AppProvider';
-import { getQrContentSummary, parseQrContent } from './qr-content';
 
 function formatExportDate(dateValue: string): string {
   return new Date(dateValue).toLocaleString('pt-BR', {
@@ -34,35 +33,9 @@ export function getDefaultHistoryExportName(): string {
 }
 
 export function buildHistoryExportText(items: ScanItem[]): string {
-  const separator = '='.repeat(72);
-  const itemSeparator = '-'.repeat(72);
-  const lines = [
-    'SCANNER QR — EXPORTAÇÃO DO HISTÓRICO',
-    separator,
-    `Gerado em: ${formatExportDate(new Date().toISOString())}`,
-    `Total de itens: ${items.length}`,
-    separator,
-    '',
-  ];
-
-  items.forEach((item, index) => {
-    const parsedContent = parseQrContent(item.data);
-    const summary = getQrContentSummary(parsedContent);
-
-    lines.push(
-      `[${index + 1}] ${summary.title.toUpperCase()}`,
-      `Data da leitura: ${formatExportDate(item.date)}`,
-      `Tipo identificado: ${summary.title}`,
-      `Resumo: ${summary.subtitle}`,
-      '',
-      'CONTEÚDO ORIGINAL',
-      item.data.trim(),
-      '',
-      index < items.length - 1 ? itemSeparator : separator,
-      ''
-    );
-  });
-
-  lines.push('Fim da exportação.');
-  return lines.join('\r\n');
+  return items
+    .map((item, index) =>
+      [`${index + 1}. Horário: ${formatExportDate(item.date)}`, item.data.trim()].join('\r\n')
+    )
+    .join('\r\n\r\n');
 }
