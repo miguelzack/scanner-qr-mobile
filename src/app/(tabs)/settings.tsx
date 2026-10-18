@@ -33,7 +33,7 @@ export default function SettingsScreen() {
     } catch {
       Alert.alert(
         'Tema não salvo',
-        'O tema foi aplicado nesta sessão, mas a preferência pode não permanecer no próximo acesso.'
+        'Não foi possível salvar a preferência. O tema anterior foi mantido.'
       );
     }
   };

@@ -349,12 +349,13 @@ function parseWifiPayload(raw: string): WifiQrContent | null {
     values[key] = unescapeWifiValue(field.slice(separator + 1));
   }
 
-  if (!values.S) return null;
+  const ssid = values.S || (isDpp ? 'SSID não informado' : '');
+  if (!ssid) return null;
 
   return {
     kind: 'wifi',
     raw,
-    ssid: values.S,
+    ssid,
     password: values.P ?? '',
     security: isDpp ? 'DPP' : values.T || 'nopass',
     hidden: values.H?.toLowerCase() === 'true',

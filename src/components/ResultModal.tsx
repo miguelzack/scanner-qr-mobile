@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import * as Sharing from 'expo-sharing';
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -140,6 +140,7 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
   const [isSaving, setIsSaving] = useState(false);
   const [isConfirmingScan, setIsConfirmingScan] = useState(false);
   const [detailsAtTop, setDetailsAtTop] = useState(true);
+  const detailsScrollRef = useRef<ScrollView>(null);
   const isDark = theme === 'dark';
   const colors = getAppColors(theme);
 
@@ -162,7 +163,7 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
 
   const dragY = useSharedValue(0);
   const dragStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: dragY.value }],
+    transform: [{ translateY: dragY.get() }],
   }));
 
   const confirmScan = useCallback(async () => {
@@ -172,9 +173,9 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
     try {
       const saved = await onConfirmScan();
       if (saved) closeResult();
-      else dragY.value = withSpring(0);
+      else dragY.set(withSpring(0));
     } catch {
-      dragY.value = withSpring(0);
+      dragY.set(withSpring(0));
       Alert.alert('Não foi possível salvar', 'Tente novamente ou cancele a leitura.');
     } finally {
       setIsConfirmingScan(false);
@@ -189,11 +190,11 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
         .activeOffsetY(10)
         .runOnJS(false)
         .onUpdate((event) => {
-          dragY.value = Math.max(event.translationY, 0);
+          dragY.set(Math.max(event.translationY, 0));
         })
         .onEnd((event, success) => {
           if (!success) {
-            dragY.value = withSpring(0);
+            dragY.set(withSpring(0));
             return;
           }
 
@@ -205,13 +206,12 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
             return;
           }
 
-          dragY.value = withSpring(0);
+          dragY.set(withSpring(0));
         })
         .onFinalize((_event, success) => {
-          if (!success) dragY.value = withSpring(0);
+          if (!success) dragY.set(withSpring(0));
         }),
     [
-      closeResult,
       detailsAtTop,
       dragY,
       handleSwipeDown,
@@ -222,18 +222,15 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
 
   useLayoutEffect(() => {
     if (visible) {
-      dragY.value = 0;
+      dragY.set(0);
     }
   }, [dragY, visible]);
 
   useEffect(() => {
-    if (visible) {
-      setDetailsAtTop(true);
-      return;
-    }
+    if (visible) return;
 
     const resetDragTimer = setTimeout(() => {
-      dragY.value = 0;
+      dragY.set(0);
     }, 350);
 
     return () => clearTimeout(resetDragTimer);
@@ -366,7 +363,13 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
 
   const copyAction: Action =
     content.kind === 'wifi'
-      ? content.password
+      ? content.security === 'DPP'
+        ? {
+            label: 'Copiar configuração',
+            icon: 'copy-outline',
+            onPress: () => copyValue(content.raw, 'Configuração Wi-Fi DPP copiada.'),
+          }
+        : content.password
         ? {
             label: 'Copiar senha',
             icon: 'key-outline',
@@ -461,6 +464,10 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
       transparent
       animationType="slide"
       statusBarTranslucent
+      onShow={() => {
+        setDetailsAtTop(true);
+        detailsScrollRef.current?.scrollTo({ y: 0, animated: false });
+      }}
       onRequestClose={() => {
         if (isSaveDialogVisible) setSaveDialogVisible(false);
         else if (!isConfirmingScan) closeResult();
@@ -540,6 +547,7 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
           )}
 
           <ScrollView
+            ref={detailsScrollRef}
             style={styles.scrollArea}
             contentContainerStyle={[styles.details, { backgroundColor: cardColor }]}
             onScroll={(event) => {
@@ -587,7 +595,11 @@ export default function ResultModal({ visible, onClose, onConfirmScan, data }: R
 
           {content.kind === 'wifi' && (
             <Text style={[styles.helperText, { color: subTextColor }]}>
-              Copie a senha e use “{openLabel}” para selecionar a rede reconhecida.
+              {content.security === 'DPP'
+                ? 'Copie a configuração DPP para usá-la em um dispositivo compatível.'
+                : content.password
+                  ? `Copie a senha e use “${openLabel}” para selecionar a rede reconhecida.`
+                  : `Use “${openLabel}” para selecionar a rede reconhecida.`}
             </Text>
           )}
           {content.kind === 'pix' && (

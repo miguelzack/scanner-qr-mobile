@@ -89,18 +89,18 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const setTheme = useCallback(async (newTheme: AppTheme) => {
-    setThemeState(newTheme);
     await AsyncStorage.setItem(STORAGE_KEYS.THEME, newTheme);
+    setThemeState(newTheme);
   }, []);
 
   const setPauseHistory = useCallback(async (pause: boolean) => {
-    setPauseHistoryState(pause);
     await AsyncStorage.setItem(STORAGE_KEYS.PAUSE_HISTORY, JSON.stringify(pause));
+    setPauseHistoryState(pause);
   }, []);
 
   const completeOnboarding = useCallback(async () => {
-    setHasSeenOnboardingState(true);
     await AsyncStorage.setItem(STORAGE_KEYS.HAS_SEEN_ONBOARDING, 'true');
+    setHasSeenOnboardingState(true);
   }, []);
 
   const addScan = useCallback(async (data: string) => {
@@ -114,8 +114,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     const updatedHistory = [newItem, ...history];
-    setHistoryState(updatedHistory);
     await AsyncStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updatedHistory));
+    setHistoryState(updatedHistory);
     return true;
   }, [history, pauseHistory]);
 
@@ -127,8 +127,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, [history]);
 
   const clearHistory = useCallback(async () => {
-    setHistoryState([]);
     await AsyncStorage.removeItem(STORAGE_KEYS.HISTORY);
+    setHistoryState([]);
   }, []);
 
   const contextValue = useMemo(

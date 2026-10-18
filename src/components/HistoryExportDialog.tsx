@@ -151,7 +151,7 @@ export default function HistoryExportDialog({
             <View style={[styles.formatCard, { backgroundColor: colors.accentSoft }]}>
               <Ionicons name="checkmark-circle" size={21} color={colors.accent} />
               <Text style={[styles.formatText, { color: colors.text }]}>
-                O TXT terá cabeçalho, datas, tipo reconhecido, resumo e conteúdo completo de cada QR Code.
+                Cada leitura terá seu número, horário e conteúdo completo do QR Code.
               </Text>
             </View>
 
