@@ -335,9 +335,9 @@ export default function HistoryScreen() {
           style={[
             styles.exportBar,
             {
-              backgroundColor: colors.surface,
-              borderColor: colors.border,
-              bottom: Math.max(insets.bottom + 74, 92),
+              backgroundColor: colors.accentSoft,
+              borderColor: colors.accent,
+              bottom: Math.max(insets.bottom - 16, 6),
             },
           ]}
         >
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     minHeight: 76,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1.25,
     borderRadius: 21,
     padding: 11,
     flexDirection: 'row',
